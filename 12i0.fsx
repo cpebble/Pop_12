@@ -9,18 +9,19 @@ let view (sz: Size) (shape: (Size -> Shape)) : (unit -> unit) =
         
         let rec _drawShape (g:Graphics) (s:Shape) : unit =
             match s with 
-            | Mix (s1, s2) -> 
-                _drawShape g s1;
-                _drawShape g s2;
             | Circle (pen, center, radius) ->
                 let p1 = Point (center.X - radius, center.Y - radius)
                 let p2 = Point (center.X + radius, center.Y + radius)
                 let rect = Rectangle (p1.X, p1.Y, p2.X, p2.Y)
 
                 g.DrawEllipse (pen, rect)
+            | Shape (pen, pointList) -> 
+                g.DrawLines(pen, pointList)
             | Line (pen, p1, p2) -> 
                 g.DrawLine (pen, p1, p2)
-            | _ -> ()
+            | Mix (s1, s2) -> 
+                _drawShape g s1;
+                _drawShape g s2;
         
         _drawShape e.Graphics _shape 
     

@@ -1,9 +1,10 @@
 module Models
 open System.Drawing
+open System
 
 type Shape = 
     | Circle of Pen * Point * int
-    | Shape of (Pen * (Point [])) list
+    | Shape of (Pen * (Point [])) 
     | Line of Pen * Point * Point
     | Mix of Shape * Shape
 
@@ -39,15 +40,61 @@ let ticks
         tickLines <- Mix (tickLines, Line (tickPen, p1, p2))
     tickLines
 
+let hourHand 
+    (center:Point) 
+    (radius:int) 
+    (color: Color) 
+    (width: int) : Shape =
+    let pen = new Pen (color, float32(width))
+    let hourToOrientation () : float = 
+        // DateTime.Now.Hour
+        (0.5 * System.Math.PI) - 
+        (
+            ( float(DateTime.Now.Hour) % 12.0 / 12.0 ) 
+            * (2.0 * System.Math.PI)
+        ) // This gets the orientation in rads
+        
+    let orientation = hourToOrientation ()
+    let x,y = (cos orientation), -(sin orientation) // Y is negated since up is down in forms
+    printfn "orientation: %f x: %f, y: %f" orientation x y
+    let endPoint = 
+        Point( center.X + int(x*float(radius)), center.Y + int(y*float(radius)) )
+    Line (pen, endPoint, center)
+
+let minuteHand 
+    (center:Point) 
+    (radius:int) 
+    (color: Color) 
+    (width: int) : Shape =
+    let pen = new Pen (color, float32(width))
+    let minuteToOrientation () : float = 
+        (0.5 * System.Math.PI) - 
+        (
+            ( float(DateTime.Now.Minute) / 60.0 ) 
+            * (2.0 * System.Math.PI)
+        ) // This gets the orientation in rads
+        
+    let orientation = minuteToOrientation ()
+    let x,y = (cos orientation), -(sin orientation) // Y is negated since up is down in forms
+    printfn "orientation: %f x: %f, y: %f" orientation x y
+    let endPoint = 
+        Point( center.X + int(x*float(radius)), center.Y + int(y*float(radius)) )
+    Line (pen, endPoint, center)
 
 
 let watchFace (size: Size) : Shape = 
     let HOURTICKS = 12 // Hour ticks
-    let TICKS = HOURTICKS*4 // Four ticks per hour
+    let TICKS = HOURTICKS*5 // Four ticks per hour
     let HOURTICKCOLOR = Color.FromArgb (255, 0, 0, 0)
     let HOURTICKLENGTH = 20
     let HOURTICKWIDTH = 5
+    let TICKLENGTH = 12
+    let TICKWIDTH = 2
     let TICKCOLOR = Color.FromArgb (200, 40, 40, 40)
+    let HOURHANDCOLOR = Color.FromArgb (255, 0, 0, 0)
+    let HOURHANDWIDTH = 6
+    let MINUTEHANDCOLOR = HOURHANDCOLOR
+    let MINUTEHANDWIDTH = 4
     let radius = 
         min size.Height size.Width 
         |> float 
@@ -58,12 +105,22 @@ let watchFace (size: Size) : Shape =
     let circlePen = new Pen (Color.Yellow, 5.0f)
     
     let clockShape = 
-        Mix (
-            Circle ( 
-                circlePen, 
-                center, 
-                radius 
-                ), 
-            ticks center radius HOURTICKLENGTH HOURTICKWIDTH HOURTICKCOLOR HOURTICKS
+        Circle ( 
+            circlePen, 
+            center, 
+            radius 
             )
-    clockShape
+    let hourTickMarks = 
+        ticks center radius HOURTICKLENGTH HOURTICKWIDTH 
+            HOURTICKCOLOR HOURTICKS
+    let minuteTickMarks = 
+        ticks center radius TICKLENGTH TICKWIDTH
+            TICKCOLOR TICKS 
+    let tickMarks = Mix(hourTickMarks, minuteTickMarks)
+    let hands = 
+        Mix( 
+            hourHand center (radius/2) HOURHANDCOLOR HOURHANDWIDTH,
+            minuteHand center radius MINUTEHANDCOLOR MINUTEHANDWIDTH
+        )
+    Mix (Mix( clockShape, hands), tickMarks)
+
