@@ -4,9 +4,12 @@ open System
 
 type Shape = 
     | Circle of Pen * Point * int
-    | Shape of (Pen * (Point [])) 
+    | Polygon of (Pen * (Point [])) 
     | Line of Pen * Point * Point
     | Mix of Shape * Shape
+    | FilledCircle of Brush * Point * int
+    | FilledRectangle of Brush * Point * Point
+    // | Text of Pen * string * Font * Brush * 
 
 let ticks 
     (center: Point) 
@@ -56,7 +59,6 @@ let hourHand
         
     let orientation = hourToOrientation ()
     let x,y = (cos orientation), -(sin orientation) // Y is negated since up is down in forms
-    printfn "orientation: %f x: %f, y: %f" orientation x y
     let endPoint = 
         Point( center.X + int(x*float(radius)), center.Y + int(y*float(radius)) )
     Line (pen, endPoint, center)
@@ -67,22 +69,24 @@ let minuteHand
     (color: Color) 
     (width: int) : Shape =
     let pen = new Pen (color, float32(width))
-    let minuteToOrientation () : float = 
-        (0.5 * System.Math.PI) - 
-        (
-            ( float(DateTime.Now.Minute) / 60.0 ) 
-            * (2.0 * System.Math.PI)
-        ) // This gets the orientation in rads
+    let minuteToOrientation () : float =
+        ( ( 2.0 * System.Math.PI ) / 60.0 )  * ( float(DateTime.Now.Minute) )
+        // This gets the orientation in rads
         
-    let orientation = minuteToOrientation ()
+    let orientation = (0.5 * System.Math.PI) - minuteToOrientation ()
     let x,y = (cos orientation), -(sin orientation) // Y is negated since up is down in forms
-    printfn "orientation: %f x: %f, y: %f" orientation x y
     let endPoint = 
-        Point( center.X + int(x*float(radius)), center.Y + int(y*float(radius)) )
-    Line (pen, endPoint, center)
+        Point (
+            int(x) * radius + center.X,
+            int(y) * radius + center.Y
+        )
+    printfn "Now i'm drawing with x:%f y:%f radius: %i, center %A" x y radius center
+    Line(pen, center, endPoint)
+    // printfn "Drawing a line of p1: %A p2: %A" center endPoint
+    // Line (pen, center, endPoint)
 
-
-let watchFace (size: Size) : Shape = 
+let decoration (size:Size) (center:Point) (radius:int) =
+    /// Constants for decoration
     let HOURTICKS = 12 // Hour ticks
     let TICKS = HOURTICKS*5 // Four ticks per hour
     let HOURTICKCOLOR = Color.FromArgb (255, 0, 0, 0)
@@ -91,6 +95,25 @@ let watchFace (size: Size) : Shape =
     let TICKLENGTH = 12
     let TICKWIDTH = 2
     let TICKCOLOR = Color.FromArgb (200, 40, 40, 40)
+
+    /// Assembling logic
+    // Tick marks
+    let hourTickMarks = 
+        ticks center radius HOURTICKLENGTH HOURTICKWIDTH 
+            HOURTICKCOLOR HOURTICKS
+    let minuteTickMarks = 
+        ticks center radius TICKLENGTH TICKWIDTH
+            TICKCOLOR TICKS 
+    let mutable decoration = Mix(hourTickMarks, minuteTickMarks)
+
+    let centerFill = 
+        let brush = new SolidBrush (Color.FromArgb (255,70,75,65))
+        FilledCircle(brush, center, radius / 15)
+    decoration <- Mix (decoration, centerFill)
+    decoration
+
+
+let watchFace (size: Size) : Shape = 
     let HOURHANDCOLOR = Color.FromArgb (255, 0, 0, 0)
     let HOURHANDWIDTH = 6
     let MINUTEHANDCOLOR = HOURHANDCOLOR
@@ -110,17 +133,11 @@ let watchFace (size: Size) : Shape =
             center, 
             radius 
             )
-    let hourTickMarks = 
-        ticks center radius HOURTICKLENGTH HOURTICKWIDTH 
-            HOURTICKCOLOR HOURTICKS
-    let minuteTickMarks = 
-        ticks center radius TICKLENGTH TICKWIDTH
-            TICKCOLOR TICKS 
-    let tickMarks = Mix(hourTickMarks, minuteTickMarks)
     let hands = 
         Mix( 
             hourHand center (radius/2) HOURHANDCOLOR HOURHANDWIDTH,
             minuteHand center radius MINUTEHANDCOLOR MINUTEHANDWIDTH
         )
-    Mix (Mix( clockShape, hands), tickMarks)
+    let decoration = decoration size center radius
+    Mix (Mix( clockShape, hands), decoration)
 

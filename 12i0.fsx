@@ -12,10 +12,18 @@ let view (sz: Size) (shape: (Size -> Shape)) : (unit -> unit) =
             | Circle (pen, center, radius) ->
                 let p1 = Point (center.X - radius, center.Y - radius)
                 let p2 = Point (center.X + radius, center.Y + radius)
-                let rect = Rectangle (p1.X, p1.Y, p2.X, p2.Y)
+                // let rect = Rectangle (p1.X, p1.Y, p2.X, p2.Y)
+                let rect = Rectangle (p1.X, p1.Y, p2.X - p1.X, p2.Y - p1.Y)
 
                 g.DrawEllipse (pen, rect)
-            | Shape (pen, pointList) -> 
+            | FilledCircle (brush, center, radius) -> 
+                let p1 = Point (center.X - radius, center.Y - radius)
+                let p2 = Point (center.X + radius, center.Y + radius)
+                let rect = Rectangle (p1.X, p1.Y, p2.X - p1.X, p2.Y - p1.Y)
+                g.FillEllipse (brush, rect)
+
+            | Polygon (pen, pointList) -> 
+                printfn "huh"
                 g.DrawLines(pen, pointList)
             | Line (pen, p1, p2) -> 
                 g.DrawLine (pen, p1, p2)
@@ -27,7 +35,7 @@ let view (sz: Size) (shape: (Size -> Shape)) : (unit -> unit) =
     
 
     let tick = new Timer ()
-    tick.Interval <- 100
+    tick.Interval <- 5000
     tick.Enabled <- true
 
     let win = new Form ()
